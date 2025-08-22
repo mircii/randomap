@@ -35,32 +35,43 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// Load land polygons
-let landGeoJSON;
+let landFeatures = [];
 fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
     .then(res => res.json())
-    .then(data => landGeoJSON = data)
+    .then(data => {
+        landFeatures = data.features;
+    })
     .catch(err => console.error("Failed to load land GeoJSON:", err));
 
 document.getElementById("teleportBtn").addEventListener("click", () => {
-    if (!landGeoJSON) return alert("Land data not loaded yet!");
+    if (landFeatures.length === 0) return alert("Land data not loaded yet!");
     
     let newLocation;
     let attempts = 0;
+    let pointOnLand = false;
 
-    do {
+    while (!pointOnLand && attempts < 1000) {
         const randomLat = Math.random() * 180 - 90;
         const randomLng = Math.random() * 360 - 180;
         newLocation = [randomLng, randomLat]; // GeoJSON expects [lng, lat]
-        attempts++;
-    } while (!turf.booleanPointInPolygon(turf.point(newLocation), landGeoJSON) && attempts < 1000);
 
-    if (attempts === 1000) return alert("Couldn't find land location.");
+        // Check each country feature
+        for (const feature of landFeatures) {
+            if (turf.booleanPointInPolygon(turf.point(newLocation), feature)) {
+                pointOnLand = true;
+                break;
+            }
+        }
+        attempts++;
+    }
+
+    if (!pointOnLand) return alert("Couldn't find land location after many tries.");
 
     const leafletLocation = [newLocation[1], newLocation[0]]; // Leaflet uses [lat, lng]
-    map.flyTo(leafletLocation, 6, { duration: 2 });
+    map.flyTo(leafletLocation, 8, { duration: 2 });
     marker.setLatLng(leafletLocation).bindPopup('You have arrived!').openPopup();
 });
 </script>
+
 </body>
 </html>
