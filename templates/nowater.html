@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Earth Teleporter 🌍 (Land Only)</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            background-color: #f0f2f5;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            background-color: #ffffff;
+            border-bottom: 1px solid #ddd;
+        }
+        #teleportBtn {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #28a745;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        #teleportBtn:hover {
+            background-color: #218838;
+        }
+        #map {
+            height: 65%;
+            width: 90%;
+            max-width: 1200px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        footer {
+            margin-top: 20px;
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>The Final Deployment! lesgoo 🚀</h1>
+    <button id="teleportBtn">Teleport!</button>
+</div>
+
+<div id="map"></div>
+
+<footer>
+    <p>Created by: <strong>{{ author }}</strong></p>
+</footer>
+
+<script>
+    // Initialize map and marker
+    let map;
+    let marker;
+    const initialLocation = [45.7606, 21.2267]; // Timișoara
+
+    map = L.map('map').setView(initialLocation, 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    marker = L.marker(initialLocation).addTo(map)
+        .bindPopup('You are here... for now!')
+        .openPopup();
+
+    // Load land polygons GeoJSON
+    let landGeoJSON;
+    fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
+        .then(res => res.json())
+        .then(data => landGeoJSON = data);
+
+    document.getElementById("teleportBtn").addEventListener("click", () => {
+        if (!landGeoJSON) return alert("Land data not loaded yet!");
+
+        let newLocation;
+        let attempts = 0;
+
+        do {
+            const randomLat = Math.random() * 180 - 90;
+            const randomLng = Math.random() * 360 - 180;
+            newLocation = [randomLng, randomLat]; // GeoJSON: [lng, lat]
+            attempts++;
+        } while (!turf.booleanPointInPolygon(turf.point(newLocation), landGeoJSON) && attempts < 1000);
+
+        if (attempts === 1000) return alert("Couldn't find land location, try again.");
+
+        const leafletLocation = [newLocation[1], newLocation[0]]; // Swap for Leaflet
+
+        console.log(`Teleporting to land: ${leafletLocation[0]}, ${leafletLocation[1]}`);
+
+        // Animate map pan & zoom
+        map.flyTo(leafletLocation, 6, {
+            duration: 2
+        });
+
+        marker.setLatLng(leafletLocation)
+              .bindPopup('You have arrived!')
+              .openPopup();
+    });
+</script>
+
+</body>
+</html>
